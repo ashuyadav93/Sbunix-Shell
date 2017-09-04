@@ -1,7 +1,8 @@
 #include <stdio.h>
+#include <libc.h>
 
-int putchar(int c)
+int putchar(char c)
 {
-  // write character to stdout
+  write(1, &c, 1);
   return c;
 }
