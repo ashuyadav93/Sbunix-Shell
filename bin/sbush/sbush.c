@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 #define _GNU_SOURCE
+=======
+#include <libc.h>
+>>>>>>> Stashed changes
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -6,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+<<<<<<< Updated upstream
 #define MAX_LENGTH 1024
 #define MAX_BUF_LENGTH 2048
 #define MAX_CMD 32

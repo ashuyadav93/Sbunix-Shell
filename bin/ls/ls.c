@@ -20,7 +20,10 @@ int main(int argc, char* argv[], char* envp[]) {
         int bytesRead;
 
 	char* fileName = ".";
-        int fd = syscall2(2, (void*)fileName, O_RDONLY);
+	if(argc > 1) {
+		fileName = argv[argc-1];
+	}
+        int fd = open((void*)fileName, O_RDONLY);
         while(1) {
                 bytesRead = syscall_ici(78, fd, buffer, BUF_SIZE);
                 if(bytesRead < 0 )
@@ -30,6 +33,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
                 for(int i = 0; i < bytesRead;) {
 			dir = (struct linux_dirent *) (buffer + i);
+			if(dir->d_name[0] != '.')
                         puts(dir->d_name);
 			i += dir->d_reclen;
                 }

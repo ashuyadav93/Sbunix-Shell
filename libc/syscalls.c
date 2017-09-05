@@ -7,7 +7,7 @@ int syscall1(long syscall, void* arg1) {
                 "syscall"
                 : "=a" (ret)
                 : "0"(syscall), "D"(arg1)
-                : "cc","rcx","r11","memory"
+                : "cc","rcx","memory"
         );
         return ret;
 }
