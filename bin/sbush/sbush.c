@@ -4,11 +4,12 @@
 #include <libc.h>
 >>>>>>> Stashed changes
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
+//#include <sys/defs.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 <<<<<<< Updated upstream
 #define MAX_LENGTH 1024
@@ -26,7 +27,7 @@ int envCount;
 char PS1_DEFAULT[MAX_LENGTH] = "\\h@\\H-\\u:\\w: ";
 
 void performExpansion(char* input);
-void performOperation(char* input, char* envp[]);
+void performOperation(char* input, char* envp[], int* fd, int previn);
 void performWordExpansion(char* tempWord, char* tempExpandedWord);
 void performCDOperation(char* commandArg);
 void findEnvVal(char *envName, char val[]);
@@ -34,6 +35,8 @@ void findEnvp(char *envp[]);
 void performExportOperation(char commandArg[MAX_CMD][MAX_LENGTH], int argVal);
 void setEnvVal(char *envName, char val[]);
 void parsePS1(char val[], char tempExpandedWord[MAX_LENGTH]);
+void performpreOperation(char* input, char* envp[]);
+int containsPipe(char* input);
 
 int main(int argc, char* argv[], char *envp[]) {
 	char welcomeStr[] = "Hello: Welcome to our Shell\n";
@@ -42,15 +45,17 @@ int main(int argc, char* argv[], char *envp[]) {
 	char **tempEnvp = envp;
 	do
 	{
-		//printf("ENV: %s\n", *tempEnvp);
+		printf("ENV: %s\n", *tempEnvp);
 		char *ch = strtok(*tempEnvp, "=");
 		if(ch != NULL)
 		{
-			sprintf(ENV[envCount].varName, "%s", ch);
+			strcpy(ENV[envCount].varName, ch);
+			printf("ENV varname: %s\n", ENV[envCount].varName);
 			ch = strtok(NULL, "\0");
 			if(ch != NULL)
 			{
-				sprintf(ENV[envCount].varValue, "%s", ch);
+				strcpy(ENV[envCount].varValue, ch);
+			        printf("ENV varvalue: %s\n", ENV[envCount].varValue);
 			}
 			envCount++;
 		}
@@ -79,8 +84,7 @@ int main(int argc, char* argv[], char *envp[]) {
 				if(len && fileInput[0] != '#')
 				{
 					fileInput[len] = '\0';
-					performExpansion(fileInput);
-					performOperation(fileInput, envp);
+					performpreOperation(fileInput, envp);
 				}
 			}
 			while(j != EOF);
@@ -114,10 +118,10 @@ int main(int argc, char* argv[], char *envp[]) {
 				ret = write(1, err, strlen(err));
 				fclose(fp);
 			}
-			else
-			{
-				performExpansion(input);
-				performOperation(input, envp);
+			else     
+                        {
+                             performpreOperation(input, envp);
+                            
 			}
 		}
 	}
@@ -130,7 +134,7 @@ void findEnvVal(char *envName, char val[])
 	{
 		if(strcmp(ENV[i].varName, envName) == 0)
 		{
-			sprintf(val, "%s", ENV[i].varValue);
+			strcpy(val, ENV[i].varValue);
 			break;
 		}
 	}
@@ -164,7 +168,10 @@ void catEnvp(char* envp[])
 		}
 		val[j] = '\0';
 		char env[MAX_BUF_LENGTH];
-		sprintf(env,"%s=%s",var, val);
+		//sprintf(env,"%s=%s",var, val);
+		strcpy(env, var);
+		strcat(env, "=");
+		strcat(val, "=");
 		for(j = 0; j < strlen(env); j++)
 			envp[i][j] = env[j];
 	}
@@ -444,13 +451,15 @@ void performExportOperation(char commandArg[MAX_CMD][MAX_LENGTH], int argVal)
 	}
 }
 
-void performOperation(char* input, char* envp[])
-{
+void performOperation(char* input, char* envp[], int * fd, int previn)
+{       
 	char command[1024] = "";
 	char commandArg[MAX_CMD][MAX_LENGTH] = {""};
         int argVal = 0, testcount = 0, len = 0, i = 0;
 	int strlength = strlen(input);
 	int backgroundProcess = 0;
+        //int w = write(1,input,strlen(input));
+        //if(w);
 	while((i < strlength) && (input[i] != '\0') && (input[i] != ' '))
 	{
 		command[len++] = input[i++];	
@@ -499,6 +508,7 @@ void performOperation(char* input, char* envp[])
 
 	char *test[testcount];
 	test[0] = command;
+        //w = write(1,command,strlen(command));
 	if(argVal)
 	{
 		for(int j = 1; j < testcount-1; j++)
@@ -507,6 +517,8 @@ void performOperation(char* input, char* envp[])
 	else
 		test[1] = NULL;
 	test[testcount-1] = (char*) NULL;
+        //printf("%s\n",test[0]);
+        
 	catEnvp(envp);
 	/*char path[MAX_BUF_LENGTH];
 	findEnvVal("PATH", path);
@@ -515,20 +527,85 @@ void performOperation(char* input, char* envp[])
 	envp[0] = pathstr;
 	envp[1] = (char*) NULL;*/
 	pid_t pid = fork();
-	if(pid != 0) {
+	if(pid > 0) {
+                if (previn != 0) {
+                   close(previn);
+                }
+                if (fd[1] != 1) {
+                   close(fd[1]);
+                }
                 int status;
-		if(!backgroundProcess) //Parent process will not wait for child process in case of background process
-		{
-			if(waitpid(-1,&status, 0) != -1) {
-                	}
+                if(!backgroundProcess) //Parent process will not wait for child process in case of background process
+		{  
+                  // printf("%s\n",test[0]);
+	           waitpid(pid,&status, 0);
 		}     
 	} else if(pid == 0) {
+                 if (previn != 0) {
+                    dup2(previn, 0);
+                 }
+                 if (fd[1] != 1) {
+                    close(fd[0]);
+                    dup2(fd[1],1);
+                 }
 		//if(backgroundProcess) to test background process
 		//	sleep(10);
 		int err = execvpe(test[0], test, envp);
 		char errStr[] = "Error in running command\n";
 		if(err == -1)
-			err = write(1, errStr,strlen(errStr));
-                exit(0);
+	        {
+                   err = write(1, errStr,strlen(errStr));
+                   exit(0);
+                }
+                exit(1);
 	}
 }
+
+
+void performpreOperation(char* input, char* envp[]) { 
+     
+      // char* commands[MAX_LENGTH];
+       int ispipe = 0;
+       if(containsPipe(input)) {
+          ispipe = 1;
+       } 
+       char *prevch = strtok(input, "|");       
+       char *ch = NULL; 
+      
+       int fd[2];
+       int previn = 0;
+       while(prevch != NULL) {
+            ch = strtok(NULL,"|");
+	    if(ch == NULL) {
+		 fd[1] = 1;
+            } else {
+	        int err = pipe(fd);
+                if (err == -1) {
+                    err = write(1, "Error in creating pipe\n", 25);
+                }
+            }
+             //printf("%d\n", j);
+             //printf("%s\n",prevch);
+             while(*prevch == ' ') {
+                 prevch++;
+             }
+             //printf("%s\n",prevch);
+	     if(!ispipe) {
+                performExpansion(prevch);
+             }
+             performOperation(prevch, envp, fd, previn);
+             prevch = ch;
+             previn = fd[0];
+        }
+}
+
+int containsPipe(char* input) {
+    for(int i=0;i<strlen(input);i++) {
+       if(input[i] == '|') {
+          return 1;
+       }
+    }
+    
+    return 0;       
+}
+
