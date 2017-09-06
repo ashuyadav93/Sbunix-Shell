@@ -6,6 +6,9 @@
 #define __NR_execve 59
 #define __NR_exit 60
 #define __NR_chdir 80
+#define __NR_pipe 22
+#define __NR_dup2 33
+#define __NR_close 3
 #define O_RDONLY        00000000
 
 int main(int argc, char *argv[], char* envp[]);
@@ -22,6 +25,11 @@ void exit(int status);
 
 int chdir(char* path);
 
+int pipe(int* fd);
+
+int close(int fd):
+
+int dup2(int a, int b);
 
 int syscall1(long syscall, void* arg1);
 
