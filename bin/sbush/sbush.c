@@ -18,6 +18,7 @@ struct envstruct ENV[100];
 int envCount = 0;
 
 char PS1_DEFAULT[MAX_LENGTH] = "\\h@\\H-\\u:\\w: ";
+char BINARY_PATH[MAX_LENGTH] = "";
 
 void performExpansion(char* input);
 void performOperation(char* input, char* envp[], int* fd, int previn);
@@ -30,6 +31,7 @@ void setEnvVal(char *envName, char val[]);
 void parsePS1(char val[], char tempExpandedWord[MAX_LENGTH]);
 void performpreOperation(char* input, char* envp[]);
 int containsPipe(char* input);
+void populateBinaryPath(char* argv);
 void addBinaryPath(char* command);
 
 char* strtok(char* s, char* d)
@@ -40,7 +42,10 @@ char* strtok(char* s, char* d)
 	static char str[MAX_LENGTH];
 
 	if(s != NULL)
+	{
 		strcpy(str, s);
+		index = 0;
+	}
 
 	int startPos = index;
 	int delFound = 0;
@@ -81,7 +86,6 @@ int main(int argc, char* argv[], char *envp[]) {
 	if(ret == -1) return -1;
 	char **tempEnvp = envp;
 	int i = 0;
-
 	while(tempEnvp[i] != NULL)
 	{
 		char ch[MAX_BUF_LENGTH];
@@ -113,6 +117,7 @@ int main(int argc, char* argv[], char *envp[]) {
 		i++;
 	}
 
+	populateBinaryPath(argv[0]);
 	char input[MAX_LENGTH];
 	int len = 0;
 	char in;
@@ -120,6 +125,7 @@ int main(int argc, char* argv[], char *envp[]) {
 	char exit[5] = "exit";
 	if(argc > 1)
 	{
+		//puts("Entering file mode");
 		for(int i = 1; i < argc; i++)
 		{
 			char* filename = argv[i];
@@ -136,7 +142,11 @@ int main(int argc, char* argv[], char *envp[]) {
 				if(len && fileInput[0] != '#')
 				{
 					fileInput[len] = '\0';
+
+                	                //performExpansion(fileInput);
+             		                //performOperation(fileInput, envp);
 					performpreOperation(fileInput, envp);
+                                        
 				}
 			}
 			while(j != EOF);
@@ -170,16 +180,11 @@ int main(int argc, char* argv[], char *envp[]) {
 				ret = write(1, err, strlen(err));
 				close(fd);
 			}
-<<<<<<< Updated upstream
 			else     
                         {
-                             performpreOperation(input, envp);
-                            
-			}
-=======
-			else
-			{*/
-			performpreOperation(input, envp);
+                		performExpansion(input);
+             			performOperation(input, envp);*/
+				performpreOperation(input, envp);
 			//}
 		}
 	}
@@ -188,12 +193,19 @@ int main(int argc, char* argv[], char *envp[]) {
 
 void findEnvVal(char *envName, char val[])
 {
-	for(int i = 0; i < envCount; i++)
+	if(strcmp(envName, "PS1") == 0)
 	{
-		if(strcmp(ENV[i].varName, envName) == 0)
+		strcpy(val, PS1_DEFAULT);
+	}
+	else
+	{
+		for(int i = 0; i < envCount; i++)
 		{
-			strcpy(val, ENV[i].varValue);
-			break;
+			if(strcmp(ENV[i].varName, envName) == 0)
+			{
+				strcpy(val, ENV[i].varValue);
+				break;
+			}
 		}
 	}
 }
@@ -373,100 +385,104 @@ void parsePS1(char *val, char tempExpandedWord[MAX_LENGTH])
 	int tempWordIndex = 0;
 	int len = strlen(val);
 	for(int i = 0; i < len; i++)
-	{
-		switch(val[i])
+	{	if(val[i] != '\0')
 		{
-			case '\\':
-					if(previousChar == '\\')
-						tempExpandedWord[tempWordIndex++] = val[i];
-					else
-						previousChar = '\\';
-					break;
-			case 'h':
-					if(previousChar == '\\')
-					{
-						int i = 0;
-						char hostname[MAX_LENGTH];
-						int fd = open("/etc/hostname", O_RDONLY);
-						for(int j = fgetc(fd); j != '\n' && j != EOF; j = fgetc(fd))
+			switch(val[i])
+			{
+				case '\\':
+						if(previousChar == '\\')
+							tempExpandedWord[tempWordIndex++] = val[i];
+						else
+							previousChar = '\\';
+						break;
+				case 'h':
+						if(previousChar == '\\')
 						{
-							hostname[i++] = j;	
-						}
-						hostname[i] = '\0';
-						int len = strlen(hostname);
-						for(i = 0; i < len && hostname[i] != '.'; i++)
-							tempExpandedWord[tempWordIndex++] = hostname[i];
-						previousChar = '\0';
-						close(fd);
-					}
-					else
-					{
-						tempExpandedWord[tempWordIndex++] = val[i];
-					}
-					break;
-			case 'H':
-					if(previousChar == '\\')
-					{
-						int i = 0;
-						char hostname[MAX_LENGTH];
-						int fd = open("/etc/hostname", O_RDONLY);
-						for(int j = fgetc(fd); j != '\n' && j != EOF; j = fgetc(fd))
-						{
-							hostname[i++] = j;	
-						}
-						hostname[i] = '\0';
-						int len = strlen(hostname);
-						for(i = 0; i < len; i++)
-							tempExpandedWord[tempWordIndex++] = hostname[i];
-						previousChar = '\0';
-						close(fd);
-					}
-					else
-					{
-						tempExpandedWord[tempWordIndex++] = val[i];
-					}
-					break;
-			case 'u':
-					if(previousChar == '\\')
-					{
-						char user[MAX_LENGTH];
-						findEnvVal("USER", user);
-						int len = strlen(user);
-						for(int i = 0; i < len; i++)
-							tempExpandedWord[tempWordIndex++] = user[i];
-						previousChar = '\0';
-					}
-					else
-					{
-						tempExpandedWord[tempWordIndex++] = val[i];
-					}
-					break;
-			case 'w':
-					if(previousChar == '\\')
-					{	
-						char buf[MAX_BUF_LENGTH];
-						findEnvVal("PWD", buf);
-						//setEnvVal("OLDPWD", val);
-						//setEnvVal("PWD", commandArg);
-						//findEnvVal("PWD", buf);
-						if(buf != NULL)
-						{
-							for(int i = 0; i < strlen(buf); i++)
+							int i = 0;
+							char hostname[MAX_LENGTH];
+							int fd = open("/etc/hostname", O_RDONLY);
+							for(int j = fgetc(fd); j != '\n' && j != EOF; j = fgetc(fd))
 							{
-								tempExpandedWord[tempWordIndex++] = buf[i];
+								hostname[i++] = j;	
 							}
+							hostname[i] = '\0';
+							int len = strlen(hostname);
+							for(i = 0; i < len && hostname[i] != '.'; i++)
+								tempExpandedWord[tempWordIndex++] = hostname[i];
+							previousChar = '\0';
+							close(fd);
 						}
-						previousChar = '\0';
-					}
-					else
-					{
+						else
+						{
+							tempExpandedWord[tempWordIndex++] = val[i];
+						}
+						break;
+				case 'H':
+						if(previousChar == '\\')
+						{
+							int i = 0;
+							char hostname[MAX_LENGTH];
+							int fd = open("/etc/hostname", O_RDONLY);
+							for(int j = fgetc(fd); j != '\n' && j != EOF; j = fgetc(fd))
+							{
+								hostname[i++] = j;	
+							}
+							hostname[i] = '\0';
+							int len = strlen(hostname);
+							for(i = 0; i < len; i++)
+								tempExpandedWord[tempWordIndex++] = hostname[i];
+							previousChar = '\0';
+							close(fd);
+						}
+						else
+						{
+							tempExpandedWord[tempWordIndex++] = val[i];
+						}
+						break;
+				case 'u':
+						if(previousChar == '\\')
+						{
+							char user[MAX_LENGTH];
+							findEnvVal("USER", user);
+							int len = strlen(user);
+							for(int i = 0; i < len; i++)
+								tempExpandedWord[tempWordIndex++] = user[i];
+							previousChar = '\0';
+						}
+						else
+						{
+							tempExpandedWord[tempWordIndex++] = val[i];
+						}
+						break;
+				case 'w':
+						if(previousChar == '\\')
+						{	
+							char buf[MAX_BUF_LENGTH];
+							findEnvVal("PWD", buf);
+							//setEnvVal("OLDPWD", val);
+							//setEnvVal("PWD", commandArg);
+							//findEnvVal("PWD", buf);
+							if(buf != NULL)
+							{
+								for(int i = 0; i < strlen(buf); i++)
+								{
+									tempExpandedWord[tempWordIndex++] = buf[i];
+								}
+							}
+							previousChar = '\0';
+						}
+						else
+						{
+							tempExpandedWord[tempWordIndex++] = val[i];
+						}
+						break;
+				default:
 						tempExpandedWord[tempWordIndex++] = val[i];
-					}
-					break;
-			default:
-					tempExpandedWord[tempWordIndex++] = val[i];
-					break;
+						break;
+			}
 		}
+		else
+			break;
 	}
 	tempExpandedWord[tempWordIndex] = '\0';
 }
@@ -580,6 +596,10 @@ void performOperation(char* input, char* envp[], int * fd, int previn)
         //printf("%s\n",test[0]);
         
 	catEnvp(envp);
+	//puts("Command is:");
+	//puts(command);
+	//puts("Binary Path:");
+	//puts(test[0]);
 	pid_t pid = fork();
 	if(pid > 0) {
                 if (previn != 0) {
@@ -609,9 +629,9 @@ void performOperation(char* input, char* envp[], int * fd, int previn)
 		if(err == -1)
 	        {
                    err = write(1, errStr,strlen(errStr));
-                   exit(0);
+                   exit(1);
                 }
-                exit(1);
+                exit(0);
 	}
 }
 
@@ -663,8 +683,59 @@ int containsPipe(char* input) {
     return 0;       
 }
 
+void populateBinaryPath(char* argv)
+{
+	if(argv != NULL)
+	{
+		int len = strlen(argv);
+		for(int i = len-1; i >= 0; i--)
+		{
+			if(i != len-1 && argv[i] == '/')
+			{
+				argv[i+1] = '\0';
+				break;
+			}
+		}
+		//puts("ARGV:");
+		//puts(argv);
+		if(argv[0] == '/')
+		{
+			strcpy(BINARY_PATH, argv);
+			//puts("Hello");
+			//puts(BINARY_PATH);
+		}
+		else
+		{
+			char path[MAX_LENGTH];
+			findEnvVal("PWD", path);
+			//puts("PATH");
+			//puts(path);
+			strcpy(BINARY_PATH, path);
+			strcat(BINARY_PATH, "/");
+			strcat(BINARY_PATH, argv);
+			//puts("Changed Binary Path");
+			//puts(BINARY_PATH);
+		}
+	}
+}
+
 void addBinaryPath(char* command) {
-        char* testSlash = command;
+
+	if(command != NULL)
+	{
+		if(command[0] == '/')
+			return;
+		char bin_path[MAX_LENGTH];
+		strcpy(bin_path, BINARY_PATH);
+		strcat(bin_path, "/");
+		strcat(bin_path, command);
+		strcpy(command, bin_path);
+		//puts("BINARY_PATH");
+		//puts(BINARY_PATH);
+		//puts("Command");
+		//puts(command);
+	}
+/*        char* testSlash = command;
         int slashExists = 0;
 	//find if forward slash exits in the input command
         while(*testSlash != '\0') {
@@ -695,5 +766,5 @@ void addBinaryPath(char* command) {
                 	strcat(binpath, command);
                 	strcpy(command, binpath);
 		}
-        }
+        }*/
 }
