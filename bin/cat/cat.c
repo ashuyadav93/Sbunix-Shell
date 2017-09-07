@@ -15,7 +15,7 @@ void executecat(int argc, char* argv[]) {
 	if(argc == 1) {
 		while(1) {
 			char ch[10];
-        		while(read(0, ch, 1) >= 0) {
+        		while(read(0, ch, 1) > 0) {
                 		write(1, ch, 1);
         		}
 		}
