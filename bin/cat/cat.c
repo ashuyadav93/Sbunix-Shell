@@ -1,4 +1,3 @@
-#include<stdio.h>
 #include<libc.h>
 
 void executecat(char* file);
@@ -13,12 +12,12 @@ void executecat(char *file) {
 	int fd;
 	char ch = ' ';
 	fd = open(file, O_RDONLY);
-	if(fd < 3) {
+	if(fd < 0) {
 		exit(1);
 	}
 
     	while(read(fd, &ch, 1) > 0) {
 		write(1, &ch, 1);
-		ch = '\0';	
 	}
+	close(fd);
 }

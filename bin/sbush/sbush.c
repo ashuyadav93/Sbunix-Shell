@@ -1,19 +1,12 @@
-<<<<<<< Updated upstream
 #define _GNU_SOURCE
-=======
 #include <libc.h>
->>>>>>> Stashed changes
 #include <stdio.h>
 #include <string.h>
-//#include <sys/defs.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#include <sys/defs.h>
 
-<<<<<<< Updated upstream
+
 #define MAX_LENGTH 1024
-#define MAX_BUF_LENGTH 2048
+#define MAX_BUF_LENGTH 1024*32
 #define MAX_CMD 32
 
 struct envstruct{
@@ -22,7 +15,7 @@ struct envstruct{
 };
 
 struct envstruct ENV[100];
-int envCount;
+int envCount = 0;
 
 char PS1_DEFAULT[MAX_LENGTH] = "\\h@\\H-\\u:\\w: ";
 
@@ -37,29 +30,88 @@ void setEnvVal(char *envName, char val[]);
 void parsePS1(char val[], char tempExpandedWord[MAX_LENGTH]);
 void performpreOperation(char* input, char* envp[]);
 int containsPipe(char* input);
+void addBinaryPath(char* command);
+
+char* strtok(char* s, char* d)
+{
+	if(d == NULL)
+		return NULL;
+	static int index;
+	static char str[MAX_LENGTH];
+
+	if(s != NULL)
+		strcpy(str, s);
+
+	int startPos = index;
+	int delFound = 0;
+	for(; str[index] != '\0'; index++)
+	{
+		for(int i = 0; i < strlen(d); i++)
+		{
+			if(d[i] == str[index])
+			{
+				str[index] = '\0';
+				delFound = 1;
+				break;
+			}
+		}
+		if(delFound)
+		{
+			if(str[startPos] != '\0')
+			{
+				index++;
+				return (&(str[startPos]));
+			}
+			else
+			{
+				delFound = 0;
+				startPos = index + 1;
+			}
+		}
+	}
+	if(str[startPos] != '\0')
+		return (&(str[startPos]));
+	else
+		return NULL;
+}
 
 int main(int argc, char* argv[], char *envp[]) {
 	char welcomeStr[] = "Hello: Welcome to our Shell\n";
 	int ret = write(1, welcomeStr, strlen(welcomeStr));
 	if(ret == -1) return -1;
 	char **tempEnvp = envp;
-	do
+	int i = 0;
+
+	while(tempEnvp[i] != NULL)
 	{
-		printf("ENV: %s\n", *tempEnvp);
-		char *ch = strtok(*tempEnvp, "=");
+		char ch[MAX_BUF_LENGTH];
+		int j = 0;
+		while((tempEnvp[i][j] != '=') && (tempEnvp[i][j] != '\0')) {
+			ch[j] = tempEnvp[i][j];
+			j++;
+		}
+		ch[j] = '\0';
+		//ch = strtok(tempEnvp[i], "=");
 		if(ch != NULL)
 		{
 			strcpy(ENV[envCount].varName, ch);
-			printf("ENV varname: %s\n", ENV[envCount].varName);
-			ch = strtok(NULL, "\0");
+			//ch = strtok(NULL, "\0");
+			int k = 0;
+			j++;
+			while(tempEnvp[i][j] != '\0') {
+				ch[k] = tempEnvp[i][j];
+				k++;
+				j++;
+			}
+			ch[k] = '\0';
 			if(ch != NULL)
 			{
 				strcpy(ENV[envCount].varValue, ch);
-			        printf("ENV varvalue: %s\n", ENV[envCount].varValue);
 			}
 			envCount++;
 		}
-	}while(*tempEnvp++);
+		i++;
+	}
 
 	char input[MAX_LENGTH];
 	int len = 0;
@@ -71,13 +123,13 @@ int main(int argc, char* argv[], char *envp[]) {
 		for(int i = 1; i < argc; i++)
 		{
 			char* filename = argv[i];
-			FILE *fp = fopen(filename, "r");
+			int fd = open(filename, O_RDONLY);
 			int j;
 			do
 			{
 				char fileInput[MAX_LENGTH] = "";
 				len = 0;
-				for(j = fgetc(fp); j != '\n' && j != EOF; j = fgetc(fp))
+				for(j = fgetc(fd); j != '\n' && j != EOF; j = fgetc(fd))
 				{
 					fileInput[len++] = j;
 				}
@@ -88,7 +140,7 @@ int main(int argc, char* argv[], char *envp[]) {
 				}
 			}
 			while(j != EOF);
-			fclose(fp);
+			close(fd);
 		}
 	}
 	else
@@ -111,18 +163,24 @@ int main(int argc, char* argv[], char *envp[]) {
 			{
 				return 0;
 			}
-			FILE* fp = fopen(input, "r");
-			if(fp != NULL)
+			/*int fd = open(input, O_RDONLY);
+			if(fd >= 3)
 			{
 				char err[] = "Error: Cannot execute a file. Please check\n";
 				ret = write(1, err, strlen(err));
-				fclose(fp);
+				close(fd);
 			}
+<<<<<<< Updated upstream
 			else     
                         {
                              performpreOperation(input, envp);
                             
 			}
+=======
+			else
+			{*/
+			performpreOperation(input, envp);
+			//}
 		}
 	}
 	return 0;
@@ -160,19 +218,12 @@ void catEnvp(char* envp[])
 	for(int i = 0; i < envCount; i++)
 	{
 		char* var = ENV[i].varName;
-		char val[MAX_BUF_LENGTH];
-		int j;
-		for(j = 0; j < strlen(ENV[i].varValue); j++)
-		{
-			val[j] = ENV[i].varValue[j];
-		}
-		val[j] = '\0';
+		char* val = ENV[i].varValue;
 		char env[MAX_BUF_LENGTH];
-		//sprintf(env,"%s=%s",var, val);
-		strcpy(env, var);
+		strcpy(env,var);
 		strcat(env, "=");
-		strcat(val, "=");
-		for(j = 0; j < strlen(env); j++)
+		strcat(env, val);
+		for(int j = 0; j < strlen(env); j++)
 			envp[i][j] = env[j];
 	}
 }
@@ -303,16 +354,16 @@ void performCDOperation(char* commandArg)
 	}
 	else
 	{
-		char buf[MAX_LENGTH];
-		size_t size = MAX_LENGTH;
-		char* ptr = getcwd(buf, size);
-		if(ptr != NULL)
-		{
-			char path[MAX_BUF_LENGTH];
-			findEnvVal("PWD", path);
-			setEnvVal("OLDPWD", path);
-			setEnvVal("PWD", ptr);
-		}
+		char val[MAX_LENGTH];
+		findEnvVal("PWD", val);
+		//puts("PWD:");
+		//puts(val);
+		setEnvVal("OLDPWD", val);
+		getcwd(val, MAX_LENGTH);
+		//puts("PWD:");
+		//puts(val);	
+		setEnvVal("PWD", val);
+		//puts("PWD after update:");
 	}
 }
 
@@ -320,7 +371,8 @@ void parsePS1(char *val, char tempExpandedWord[MAX_LENGTH])
 {
 	char previousChar = '\0';
 	int tempWordIndex = 0;
-	for(int i = 0; i < strlen(val); i++)
+	int len = strlen(val);
+	for(int i = 0; i < len; i++)
 	{
 		switch(val[i])
 		{
@@ -335,8 +387,8 @@ void parsePS1(char *val, char tempExpandedWord[MAX_LENGTH])
 					{
 						int i = 0;
 						char hostname[MAX_LENGTH];
-						FILE *fp = fopen("/etc/hostname", "r");
-						for(int j = fgetc(fp); j != '\n' && j != EOF; j = fgetc(fp))
+						int fd = open("/etc/hostname", O_RDONLY);
+						for(int j = fgetc(fd); j != '\n' && j != EOF; j = fgetc(fd))
 						{
 							hostname[i++] = j;	
 						}
@@ -345,6 +397,7 @@ void parsePS1(char *val, char tempExpandedWord[MAX_LENGTH])
 						for(i = 0; i < len && hostname[i] != '.'; i++)
 							tempExpandedWord[tempWordIndex++] = hostname[i];
 						previousChar = '\0';
+						close(fd);
 					}
 					else
 					{
@@ -356,8 +409,8 @@ void parsePS1(char *val, char tempExpandedWord[MAX_LENGTH])
 					{
 						int i = 0;
 						char hostname[MAX_LENGTH];
-						FILE *fp = fopen("/etc/hostname", "r");
-						for(int j = fgetc(fp); j != '\n' && j != EOF; j = fgetc(fp))
+						int fd = open("/etc/hostname", O_RDONLY);
+						for(int j = fgetc(fd); j != '\n' && j != EOF; j = fgetc(fd))
 						{
 							hostname[i++] = j;	
 						}
@@ -366,6 +419,7 @@ void parsePS1(char *val, char tempExpandedWord[MAX_LENGTH])
 						for(i = 0; i < len; i++)
 							tempExpandedWord[tempWordIndex++] = hostname[i];
 						previousChar = '\0';
+						close(fd);
 					}
 					else
 					{
@@ -390,13 +444,16 @@ void parsePS1(char *val, char tempExpandedWord[MAX_LENGTH])
 			case 'w':
 					if(previousChar == '\\')
 					{	
-						char buf[MAX_LENGTH];
-						char* ptr = getcwd(buf, MAX_LENGTH);
-						if(ptr)
+						char buf[MAX_BUF_LENGTH];
+						findEnvVal("PWD", buf);
+						//setEnvVal("OLDPWD", val);
+						//setEnvVal("PWD", commandArg);
+						//findEnvVal("PWD", buf);
+						if(buf != NULL)
 						{
-							for(int i = 0; i < strlen(ptr); i++)
+							for(int i = 0; i < strlen(buf); i++)
 							{
-								tempExpandedWord[tempWordIndex++] = ptr[i];
+								tempExpandedWord[tempWordIndex++] = buf[i];
 							}
 						}
 						previousChar = '\0';
@@ -427,9 +484,9 @@ void performExportOperation(char commandArg[MAX_CMD][MAX_LENGTH], int argVal)
 				ch = strtok(NULL, "\"\0");
 				if(ch != NULL)
 				{
-					char tempExpandedWord[MAX_LENGTH];
-					parsePS1(ch, tempExpandedWord);
-						printf("String is: %s\n", tempExpandedWord);
+					//char tempExpandedWord[MAX_LENGTH];
+					//parsePS1(ch, tempExpandedWord);
+					//printf("String is: %s\n", tempExpandedWord);
 					int i;
 					for(i = 0; i < strlen(ch); i++)
 						PS1_DEFAULT[i] = ch[i];
@@ -454,7 +511,7 @@ void performExportOperation(char commandArg[MAX_CMD][MAX_LENGTH], int argVal)
 void performOperation(char* input, char* envp[], int * fd, int previn)
 {       
 	char command[1024] = "";
-	char commandArg[MAX_CMD][MAX_LENGTH] = {""};
+	char commandArg[MAX_CMD][MAX_LENGTH];
         int argVal = 0, testcount = 0, len = 0, i = 0;
 	int strlength = strlen(input);
 	int backgroundProcess = 0;
@@ -506,7 +563,10 @@ void performOperation(char* input, char* envp[], int * fd, int previn)
 	else
 		testcount = 3;
 
-	char *test[testcount];
+	//add binary path to command if not already present
+	addBinaryPath(command);
+
+	char* test[testcount];
 	test[0] = command;
         //w = write(1,command,strlen(command));
 	if(argVal)
@@ -520,12 +580,6 @@ void performOperation(char* input, char* envp[], int * fd, int previn)
         //printf("%s\n",test[0]);
         
 	catEnvp(envp);
-	/*char path[MAX_BUF_LENGTH];
-	findEnvVal("PATH", path);
-	char pathstr[sizeof("PATH=") + strlen(path)];
-	sprintf(pathstr, "PATH=%s", path);
-	envp[0] = pathstr;
-	envp[1] = (char*) NULL;*/
 	pid_t pid = fork();
 	if(pid > 0) {
                 if (previn != 0) {
@@ -550,7 +604,7 @@ void performOperation(char* input, char* envp[], int * fd, int previn)
                  }
 		//if(backgroundProcess) to test background process
 		//	sleep(10);
-		int err = execvpe(test[0], test, envp);
+		int err = execve(test[0], test, envp);
 		char errStr[] = "Error in running command\n";
 		if(err == -1)
 	        {
@@ -609,3 +663,37 @@ int containsPipe(char* input) {
     return 0;       
 }
 
+void addBinaryPath(char* command) {
+        char* testSlash = command;
+        int slashExists = 0;
+	//find if forward slash exits in the input command
+        while(*testSlash != '\0') {
+                if(*testSlash == '/') {
+                        slashExists = 1;
+                        break;
+                }
+                testSlash++;
+        }
+	//if the input command does not contain forward slash add binary path fetched from env. variable "_"
+        if(!slashExists) {
+		char binpath[MAX_LENGTH];
+		char pwd[MAX_LENGTH];
+                
+		findEnvVal("_", binpath);
+		findEnvVal("PWD", pwd);
+		if(binpath[0] == '.') {
+			char* temp = binpath+1;
+			strcpy(binpath, temp);
+			strcat(pwd, binpath);
+			strcpy(binpath, pwd);
+		}
+
+                int i = -1;
+                for(i = strlen(binpath) - 1; binpath[i] != '/'; i--);
+		if(i >= 0) {
+                	binpath[i+1] = '\0';
+                	strcat(binpath, command);
+                	strcpy(command, binpath);
+		}
+        }
+}

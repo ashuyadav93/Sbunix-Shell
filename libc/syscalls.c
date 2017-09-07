@@ -1,5 +1,17 @@
 #include<libc.h>
 
+int syscall0(long syscall) {
+	int ret;
+        __asm__ volatile
+        (
+                "syscall"
+                : "=a" (ret)
+                : "0"(syscall)
+                : "cc","memory"
+        );
+        return ret;
+}
+
 int syscall1(long syscall, void* arg1) {
         int ret;
         __asm__ volatile
@@ -12,12 +24,12 @@ int syscall1(long syscall, void* arg1) {
         return ret;
 }
 
-int syscall2(long syscall, void* arg1, int arg2) {
-        int ret;
+uint64_t syscall2(long syscall, void* arg1, int arg2) {
+        uint64_t ret;
         __asm__ volatile
         (
                 "syscall"
-                : "=a" (ret)
+                : "=r" (ret)
                 : "0"(syscall), "D"(arg1), "S"(arg2)
                 : "cc","rcx","r11","memory"
         );
