@@ -51,7 +51,13 @@ int syscall0(long syscall);
 
 int syscall1(long syscall, void* arg1);
 
+int syscall1_i(long syscall, int arg1);
+
+int syscall1_ip(long syscall, int* arg1);
+
 uint64_t syscall2(long syscall, void* arg1, int arg2);
+
+int syscall2_ii(long syscall, int arg1, int arg2);
 
 int syscall3(long syscall, void* arg1, void* arg2, void* arg3);
 

@@ -1,5 +1,5 @@
 #include<libc.h>
 
 int pipe(int *fd) {
-    return syscall1(__NR_pipe, (void*)fd);
+    return syscall1_ip(__NR_pipe, fd);
 }

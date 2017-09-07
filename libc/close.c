@@ -1,5 +1,5 @@
 #include<libc.h>
 
 int close(int fd) {
-    return syscall1(__NR_close, (void*)&fd);
+    return syscall1_i(__NR_close, fd);
 }

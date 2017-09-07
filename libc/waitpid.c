@@ -7,8 +7,8 @@ pid_t waitpid(pid_t pid, int *wstatus, int options) {
         (
                 "syscall"
                 : "=a" (ret)
-                : "0"(__NR_wait4), "D"(pid), "S"(wstatus), "d"(options), "b"(NULL)
-                : "cc","rcx","r11","memory"
+                : "0"(__NR_wait4), "D"(pid), "S"(wstatus), "d"(options), "c"(NULL)
+                : "cc","r11","memory"
         );
         return (pid_t)ret;
 }
