@@ -4,9 +4,7 @@ void executecat(int argc, char* argv[]);
 void readWrite(int fd);
 
 int main(int argc, char* argv[], char* envp[]) {
-	if(argc > 1) {
-        	executecat(argc, argv);
-	}
+        executecat(argc, argv);
 	return 0;
 } 
 
