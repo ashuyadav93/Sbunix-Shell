@@ -47,12 +47,6 @@ int pipe(int* fd);
 
 int dup2(int a, int b);
 
-char* strcpy(char* d, const char* s);
-
-char* strcat(char* d, const char* s);
-
-int fgetc(int fd);
-
 int syscall0(long syscall);
 
 int syscall1(long syscall, void* arg1);
